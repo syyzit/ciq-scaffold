@@ -8,10 +8,11 @@ or bundles the SDK.
 from __future__ import annotations
 
 import argparse
-import base64
 import re
+import struct
 import sys
 import uuid
+import zlib
 from pathlib import Path
 
 from ciq_scaffold import __version__
@@ -42,8 +43,6 @@ SUPPORTED_DEVICES = (
     "instinct2",
     "instinct2s",
     "instinct2x",
-    "instinct2_solar",
-    "instinct2_solar_tactical",
 )
 
 # Target used when --device is omitted (same as 0.1.0 bootstrap behavior).
@@ -51,11 +50,38 @@ DEFAULT_DEVICES = ("instinct2",)
 
 _NAME_RE = re.compile(r"[A-Za-z][A-Za-z0-9]*$")
 
-# A tiny 1x1 opaque PNG used as a placeholder launcher icon.
-_PLACEHOLDER_PNG_B64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAA"
-    "AABJRU5ErkJggg=="
-)
+# 62x62 placeholder launcher icon (matches the Instinct 2 launcher icon
+# size so monkeyc does not need to scale it). Generated with stdlib only.
+_ICON_SIZE = 62
+
+
+def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    return (
+        struct.pack(">I", len(data))
+        + chunk_type
+        + data
+        + struct.pack(">I", zlib.crc32(chunk_type + data) & 0xFFFFFFFF)
+    )
+
+
+def launcher_icon_png(size: int = _ICON_SIZE) -> bytes:
+    """Return a valid `size` x `size` RGB PNG (dark bg, light centre square)."""
+    ihdr = struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0)
+    raw = bytearray()
+    margin = size // 3
+    for y in range(size):
+        raw.append(0)  # filter byte: none
+        for x in range(size):
+            if margin <= x < size - margin and margin <= y < size - margin:
+                raw.extend((240, 240, 240))
+            else:
+                raw.extend((16, 16, 16))
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + _png_chunk(b"IHDR", ihdr)
+        + _png_chunk(b"IDAT", zlib.compress(bytes(raw)))
+        + _png_chunk(b"IEND", b"")
+    )
 
 MIN_API_LEVEL = "3.2.0"
 
@@ -129,14 +155,15 @@ def layout_xml() -> str:
 
 def drawables_xml() -> str:
     return """<drawables>
-    <bitmap id="LauncherIcon" filename="images/launcher_icon.png" />
+    <bitmap id="LauncherIcon" filename="launcher_icon.png" />
 </drawables>
 """
 
 
 def app_mc(*, prefix: str) -> str:
-    return f"""using Toybox.Application;
-using Toybox.WatchUi;
+    return f"""import Toybox.Lang;
+import Toybox.Application;
+import Toybox.WatchUi;
 
 class {prefix}App extends Application.AppBase {{
 
@@ -144,8 +171,8 @@ class {prefix}App extends Application.AppBase {{
         AppBase.initialize();
     }}
 
-    function getInitialView() as [Views] or Null {{
-        return [{prefix}View.create()];
+    function getInitialView() as [Views] or [Views, InputDelegates] {{
+        return [new {prefix}View()];
     }}
 
 }}
@@ -154,8 +181,9 @@ class {prefix}App extends Application.AppBase {{
 
 def view_mc(*, prefix: str, app_type: str) -> str:
     base = VIEW_BASES[app_type]
-    return f"""using Toybox.Graphics;
-using Toybox.WatchUi;
+    return f"""import Toybox.Lang;
+import Toybox.Graphics;
+import Toybox.WatchUi;
 
 class {prefix}View extends {base} {{
 
@@ -250,9 +278,9 @@ def generate_project(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    icon = target / "resources" / "images" / "launcher_icon.png"
+    icon = target / "resources" / "drawables" / "launcher_icon.png"
     icon.parent.mkdir(parents=True, exist_ok=True)
-    icon.write_bytes(base64.b64decode(_PLACEHOLDER_PNG_B64))
+    icon.write_bytes(launcher_icon_png())
 
     return target
 
