@@ -9,7 +9,12 @@ from pathlib import Path
 import pytest
 
 from ciq_scaffold import __version__
-from ciq_scaffold.cli import MANIFEST_TYPES, generate_project
+from ciq_scaffold.cli import (
+    DEFAULT_DEVICES,
+    MANIFEST_TYPES,
+    SUPPORTED_DEVICES,
+    generate_project,
+)
 
 TYPES = ["watchface", "datafield", "widget", "app"]
 
@@ -115,3 +120,63 @@ def test_cli_invalid_name_rejected(tmp_path: Path) -> None:
 
 def test_package_version() -> None:
     assert __version__ == "0.1.0"
+
+
+def _product_ids(target: Path) -> list[str | None]:
+    tree = ET.parse(target / "manifest.xml")
+    root = tree.getroot()
+    products = root.find("iq:application", NS).find("iq:products", NS)  # type: ignore[union-attr]
+    assert products is not None
+    return [p.get("id") for p in products.findall("iq:product", NS)]
+
+
+def test_default_devices_is_instinct2_only(tmp_path: Path) -> None:
+    assert list(DEFAULT_DEVICES) == ["instinct2"]
+    target = generate_project(name="MyFace", app_type="watchface", out=tmp_path)
+    assert _product_ids(target) == ["instinct2"]
+
+
+def test_single_extra_device(tmp_path: Path) -> None:
+    target = generate_project(
+        name="MyFace", app_type="watchface", out=tmp_path, devices=["instinct2s"]
+    )
+    assert _product_ids(target) == ["instinct2s"]
+
+
+def test_multiple_devices_all_listed(tmp_path: Path) -> None:
+    devices = ["instinct2", "instinct2s", "instinct2x"]
+    target = generate_project(
+        name="MyFace", app_type="watchface", out=tmp_path, devices=devices
+    )
+    assert _product_ids(target) == devices
+
+
+def test_unknown_device_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="allowed ids"):
+        generate_project(
+            name="MyFace", app_type="watchface", out=tmp_path, devices=["nope"]
+        )
+
+
+def test_cli_multiple_devices(tmp_path: Path) -> None:
+    proc = subprocess.run(
+        [sys.executable, "-m", "ciq_scaffold.cli", "new", "MyFace", "--type", "watchface",
+         "--out", str(tmp_path),
+         "--device", "instinct2", "--device", "instinct2s"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0
+    assert _product_ids(tmp_path / "MyFace") == ["instinct2", "instinct2s"]
+
+
+def test_cli_unknown_device_rejected(tmp_path: Path) -> None:
+    proc = subprocess.run(
+        [sys.executable, "-m", "ciq_scaffold.cli", "new", "MyFace", "--type", "watchface",
+         "--out", str(tmp_path), "--device", "nope"],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode != 0
+    for allowed in SUPPORTED_DEVICES:
+        assert allowed in proc.stderr
