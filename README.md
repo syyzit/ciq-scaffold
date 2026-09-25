@@ -38,6 +38,7 @@ Requires Python 3.9+.
 ```sh
 ciq-scaffold new MyFace --type watchface
 ciq-scaffold new MyField --type datafield --out /tmp/ciq --force
+ciq-scaffold new MyFace --type watchface --device instinct2 --device instinct2s
 ciq-scaffold --version
 ```
 
@@ -46,6 +47,9 @@ ciq-scaffold --version
 - `--out DIR`: parent directory for the new project (default: current directory).
 - `--force`: allow overwriting a non-empty target directory. Without it, a non-empty
   target is refused.
+- `--device ID`: target device product id; repeat the flag for multiple devices
+  (default: `instinct2`). Unknown ids are refused with the allowed list.
+  See [Supported devices](#supported-devices).
 
 ## Generated tree
 
@@ -75,7 +79,22 @@ The view base class depends on `--type`:
 | widget     | widget          | `WatchUi.View`       |
 | app        | watch-app       | `WatchUi.View`       |
 
-Target device is `instinct2` (Instinct 2). A `--device` flag for more targets is a later milestone.
+## Supported devices
+
+`--device` accepts a small curated subset of the Instinct 2 family
+(the generated `manifest.xml` `iq:products` lists every selected id):
+
+| `--device` id              | Device                          |
+|----------------------------|---------------------------------|
+| `instinct2` (default)      | Instinct 2                      |
+| `instinct2s`               | Instinct 2S                     |
+| `instinct2x`               | Instinct 2X Solar               |
+| `instinct2_solar`          | Instinct 2 Solar                |
+| `instinct2_solar_tactical` | Instinct 2 Solar, Tactical ed.  |
+
+Ids follow the Connect IQ SDK's `devices.xml` product naming; verify
+against your installed SDK before building. Need another target?
+File an issue — the list is intentionally small for now.
 
 ## Building a generated project
 
@@ -85,7 +104,8 @@ Requires the official Connect IQ SDK:
 monkeyc -d instinct2 -f monkey.jungle -o bin/MyFace.prg -y <developer_key>
 ```
 
-Then run `bin/MyFace.prg` in the Connect IQ simulator with the Instinct 2 profile.
+Repeat with `-d <id>` for each target device. Then run `bin/MyFace.prg`
+in the Connect IQ simulator with the matching device profile.
 
 ## Official docs
 
