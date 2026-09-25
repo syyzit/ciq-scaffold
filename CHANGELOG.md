@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `ciq-scaffold new` accepts repeatable `--device <id>` to target more than the
+  default `instinct2` (e.g. `--device instinct2 --device instinct2s`). The
+  generated `manifest.xml` `iq:products` lists every selected device, and the
+  generated project README points `monkeyc -d` at the first target. Unknown
+  ids are refused with the allowed list. Supported ids (Instinct 2 family):
+  `instinct2`, `instinct2s`, `instinct2x`, `instinct2_solar`,
+  `instinct2_solar_tactical`; see README for details.
+
 ## [0.1.0]
 
 ### Added
