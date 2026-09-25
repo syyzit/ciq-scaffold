@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import struct
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -27,7 +28,7 @@ EXPECTED_FILES = [
     "resources/strings/strings.xml",
     "resources/layouts/layout.xml",
     "resources/drawables/drawables.xml",
-    "resources/images/launcher_icon.png",
+    "resources/drawables/launcher_icon.png",
 ]
 
 NS = {"iq": "http://www.garmin.com/xml/connectiq"}
@@ -74,13 +75,48 @@ def test_generate_all_types(tmp_path: Path, app_type: str) -> None:
     jungle = (target / "monkey.jungle").read_text(encoding="utf-8")
     assert "project.manifest = manifest.xml" in jungle
 
-    # Placeholder icon is a real PNG.
-    icon = (target / "resources" / "images" / "launcher_icon.png").read_bytes()
+    # Placeholder icon is a real 62x62 PNG next to drawables.xml.
+    icon = (target / "resources" / "drawables" / "launcher_icon.png").read_bytes()
     assert icon[:8] == b"\x89PNG\r\n\x1a\n"
+    width, height = struct.unpack(">II", icon[16:24])
+    assert (width, height) == (62, 62)
 
     # App source references the view.
     app_mc = (target / "source" / "MyFaceApp.mc").read_text(encoding="utf-8")
     assert "MyFaceView" in app_mc
+
+
+def test_launcher_icon_is_valid_62x62_png(tmp_path: Path) -> None:
+    target = generate_project(name="MyFace", app_type="watchface", out=tmp_path)
+    icon = (target / "resources" / "drawables" / "launcher_icon.png").read_bytes()
+    assert icon[:8] == b"\x89PNG\r\n\x1a\n"
+    assert icon[12:16] == b"IHDR"
+    width, height, bit_depth, color_type = struct.unpack(">IIBB", icon[16:26])
+    assert (width, height) == (62, 62)
+    assert bit_depth == 8
+    assert color_type in (2, 6)
+
+
+def test_drawables_references_local_icon(tmp_path: Path) -> None:
+    target = generate_project(name="MyFace", app_type="watchface", out=tmp_path)
+    drawables = (target / "resources" / "drawables" / "drawables.xml").read_text(
+        encoding="utf-8"
+    )
+    assert 'filename="launcher_icon.png"' in drawables
+
+
+@pytest.mark.parametrize("app_type", TYPES)
+def test_templates_use_import_and_new_view(tmp_path: Path, app_type: str) -> None:
+    target = generate_project(name="MyFace", app_type=app_type, out=tmp_path)
+    app_mc = (target / "source" / "MyFaceApp.mc").read_text(encoding="utf-8")
+    view_mc = (target / "source" / "MyFaceView.mc").read_text(encoding="utf-8")
+    assert "using Toybox." not in app_mc
+    assert "using Toybox." not in view_mc
+    assert "import Toybox.Lang;" in app_mc
+    assert "import Toybox.Lang;" in view_mc
+    assert "function getInitialView() as [Views] or [Views, InputDelegates]" in app_mc
+    assert "return [new MyFaceView()];" in app_mc
+    assert ".create()" not in app_mc
 
 
 def test_refuses_non_empty_without_force(tmp_path: Path) -> None:

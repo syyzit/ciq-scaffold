@@ -64,7 +64,7 @@ MyFace/
 │   ├── strings/strings.xml      # AppName
 │   ├── layouts/layout.xml       # minimal layout
 │   ├── drawables/drawables.xml  # LauncherIcon bitmap
-│   └── images/launcher_icon.png # tiny placeholder icon
+│   ├── drawables/launcher_icon.png # 62x62 placeholder icon (matches device size)
 └── source/
     ├── MyFaceApp.mc             # Toybox.Application.AppBase subclass
     └── MyFaceView.mc            # WatchFace view
@@ -89,8 +89,6 @@ The view base class depends on `--type`:
 | `instinct2` (default)      | Instinct 2                      |
 | `instinct2s`               | Instinct 2S                     |
 | `instinct2x`               | Instinct 2X Solar               |
-| `instinct2_solar`          | Instinct 2 Solar                |
-| `instinct2_solar_tactical` | Instinct 2 Solar, Tactical ed.  |
 
 Ids follow the Connect IQ SDK's `devices.xml` product naming; verify
 against your installed SDK before building. Need another target?

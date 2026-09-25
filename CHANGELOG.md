@@ -13,8 +13,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   generated `manifest.xml` `iq:products` lists every selected device, and the
   generated project README points `monkeyc -d` at the first target. Unknown
   ids are refused with the allowed list. Supported ids (Instinct 2 family):
-  `instinct2`, `instinct2s`, `instinct2x`, `instinct2_solar`,
-  `instinct2_solar_tactical`; see README for details.
+  `instinct2`, `instinct2s`, `instinct2x`; see README for details.
+
+### Fixed
+
+- Launcher icon now lives at `resources/drawables/launcher_icon.png` and
+  `drawables.xml` references it as `filename="launcher_icon.png"` (relative
+  to the XML file), so `monkeyc` resolves it.
+- Placeholder launcher icon is a real 62x62 PNG matching the Instinct 2
+  launcher icon size, so no scaling warning and no missing-bitmap error.
+- App and View templates use `import Toybox.X;` (with `import Toybox.Lang;`)
+  instead of `using Toybox.X;`, bringing type names like `Views`,
+  `InputDelegates`, and `Dc` into scope.
+- `getInitialView` now has the correct signature
+  `function getInitialView() as [Views] or [Views, InputDelegates]` and
+  returns `[new <Prefix>View()]` (views have no static `create()`).
+- Removed invalid device ids `instinct2_solar` and
+  `instinct2_solar_tactical` (not real SDK ids; Solar/Tactical models use
+  `instinct2` / `instinct2s` / `instinct2x`).
 
 ## [0.1.0]
 
