@@ -171,8 +171,8 @@ class {prefix}App extends Application.AppBase {{
         AppBase.initialize();
     }}
 
-    function getInitialView() as [Views] or Null {{
-        return [{prefix}View.create()];
+    function getInitialView() as [Views] or [Views, InputDelegates] {{
+        return [new {prefix}View()];
     }}
 
 }}
@@ -181,8 +181,9 @@ class {prefix}App extends Application.AppBase {{
 
 def view_mc(*, prefix: str, app_type: str) -> str:
     base = VIEW_BASES[app_type]
-    return f"""using Toybox.Graphics;
-using Toybox.WatchUi;
+    return f"""import Toybox.Lang;
+import Toybox.Graphics;
+import Toybox.WatchUi;
 
 class {prefix}View extends {base} {{
 
