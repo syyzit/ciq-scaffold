@@ -43,8 +43,6 @@ SUPPORTED_DEVICES = (
     "instinct2",
     "instinct2s",
     "instinct2x",
-    "instinct2_solar",
-    "instinct2_solar_tactical",
 )
 
 # Target used when --device is omitted (same as 0.1.0 bootstrap behavior).
